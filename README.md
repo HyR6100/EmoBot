@@ -8,7 +8,9 @@
 - 启动 Isaac：python server/isaac_controller.py (监听 TCP 12345)
 - 启动 Blender：打开模型（models/h12h12vrm.blend)，运行 UDP 接收与 JPEG 发送脚本。
 - 启动 Ollama：ollama serve。(根据电脑配置选择LLM模型，本项目用的qwen2.5:14b)
-- 启动 Qt 客户端：进入 qt_companion 运行编译好的二进制文件。![Uploading 图片.png…]()
+- 启动 Qt 客户端：进入 qt_companion 运行编译好的二进制文件。
+- <img width="1024" height="598" alt="图片" src="https://github.com/user-attachments/assets/8d0b9166-adb7-4329-84b9-6a44e86abd4d" />
+
 
 
 ## 项目亮点
