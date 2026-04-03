@@ -2,15 +2,14 @@
 
 全栈感知的 **数字人陪伴 + 具身联动** 实验项目：桌面端用 **C++/Qt** 做产品与编排，**大语言模型**负责对话与人设，**Isaac Sim / Blender** 负责机器人驱动与 VRM 可视化，并打通 **TTS、表情指令与实时画面回传**。
 致谢+需准备：blender， Unitree-H1， Qt，ollama，tts
-<img width="1024" height="598" alt="图片" src="https://github.com/user-attachments/assets/e302bcc2-69c7-4ef2-a4fd-ba9aa4c873f2" />
-
 
 ## 启动顺序：
 
 - 启动 Isaac：python server/isaac_controller.py (监听 TCP 12345)
 - 启动 Blender：打开模型（models/h12h12vrm.blend)，运行 UDP 接收与 JPEG 发送脚本。
 - 启动 Ollama：ollama serve。(根据电脑配置选择LLM模型，本项目用的qwen2.5:14b)
-- 启动 Qt 客户端：进入 qt_companion 运行编译好的二进制文件。
+- 启动 Qt 客户端：进入 qt_companion 运行编译好的二进制文件。![Uploading 图片.png…]()
+
 
 ## 项目亮点
 
