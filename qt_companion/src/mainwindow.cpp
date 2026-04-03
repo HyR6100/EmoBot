@@ -33,6 +33,30 @@
 #include <QPropertyAnimation>
 #include <QEasingCurve>
 #include <QSizePolicy>
+#include <QtGlobal>
+
+static QString resolveEmobotPython()
+{
+    const QString fromEnv = QString::fromLocal8Bit(qgetenv("EMOBOT_PYTHON"));
+    if (!fromEnv.isEmpty())
+        return fromEnv;
+    return QStringLiteral("python3");
+}
+
+static QString resolveTtsScriptPath()
+{
+    const QString dir = QCoreApplication::applicationDirPath();
+    QString p = QDir(dir).filePath(QStringLiteral("tts_edge.py"));
+    if (QFile::exists(p))
+        return p;
+    const QString root = QString::fromLocal8Bit(qgetenv("EMOBOT_ROOT"));
+    if (!root.isEmpty()) {
+        p = QDir(root).filePath(QStringLiteral("qt_companion/tts_edge.py"));
+        if (QFile::exists(p))
+            return p;
+    }
+    return QDir(dir).filePath(QStringLiteral("tts_edge.py"));
+}
 
 static QColor bubbleTextColor(const QColor &bg)
 {
@@ -252,15 +276,16 @@ MainWindow::MainWindow(CompanionBackend *backend, QWidget *parent)
 
     m_mjpegView = new MjpegViewerWidget(m_videoPlaceholder);
     m_mjpegView->setStyleSheet("background: rgba(255,255,255,0.15); border-radius:14px;");
-    videoLayout->addWidget(m_mjpegView, 1);
-
+    // 不抢纵向 stretch，高度交给 MjpegViewerWidget::heightForWidth（按画面比例）
+    videoLayout->addWidget(m_mjpegView, 0);
     m_videoStatusLabel = new QLabel(QStringLiteral(
         "视频：① HTTP — 默认连接 http://127.0.0.1:8090/stream（可先运行 mjpeg_blender_server.py）\n"
-        "② UDP — Blender 向 127.0.0.1:5005 发送 JPEG 字节（可拆多个 UDP 包，程序会按 JPEG 标记拼帧）"),
+        "② UDP — blend 内脚本向 127.0.0.1:5005 发送 JPEG（单包建议小于 64KB；分片时 Qt 会按 JPEG 标记拼帧）"),
                                       m_videoPlaceholder);
     m_videoStatusLabel->setAlignment(Qt::AlignCenter);
     m_videoStatusLabel->setStyleSheet("color:#6b3d86;");
     videoLayout->addWidget(m_videoStatusLabel, 0);
+    videoLayout->addStretch(1);
 
     m_videoStatusDefaultText = m_videoStatusLabel->text();
 
@@ -273,8 +298,9 @@ MainWindow::MainWindow(CompanionBackend *backend, QWidget *parent)
     // Make the conversation area wider; keep video panel smaller.
     splitter->setStretchFactor(0, 3);
     splitter->setStretchFactor(1, 1);
-    m_videoPlaceholder->setMinimumWidth(320);
-    m_videoPlaceholder->setMaximumWidth(420);
+    m_videoPlaceholder->setMinimumWidth(340);
+    // 略放宽上限，16:9 画面在窄栏里不会太扁；仍可拖主窗口调节 splitter
+    m_videoPlaceholder->setMaximumWidth(560);
 
     // Persona dialog starts hidden.
     m_currentPersonaText = m_backend ? m_backend->defaultPersonaText() : QString();
@@ -310,11 +336,13 @@ MainWindow::MainWindow(CompanionBackend *backend, QWidget *parent)
 
     if (m_backend && m_mjpegView) {
         // Blender UDP JPEG → Qt（此前未连接 frameReady，导致界面一直没有画面）
-        connect(m_backend, &CompanionBackend::frameReady, m_mjpegView, &MjpegViewerWidget::showFrame);
-        connect(m_backend, &CompanionBackend::frameReady, this, [this](const QPixmap &) {
-            if (m_videoStatusLabel)
-                m_videoStatusLabel->setText(QStringLiteral("已接收 Blender UDP 视频帧（127.0.0.1:5005）"));
-        });
+        connect(m_backend, &CompanionBackend::frameReady, m_mjpegView, &MjpegViewerWidget::showFrame,
+                Qt::QueuedConnection);
+        connect(m_backend, &CompanionBackend::frameReady, this, [this](const QPixmap &px) {
+            if (px.isNull() || !m_videoStatusLabel)
+                return;
+            m_videoStatusLabel->setText(QStringLiteral("已接收 Blender UDP 视频帧（127.0.0.1:5005）"));
+        }, Qt::QueuedConnection);
     }
 
     if (m_backend) {
@@ -746,8 +774,8 @@ void MainWindow::startTTS(const QString &text)
         QString::number(QDateTime::currentMSecsSinceEpoch()) + QLatin1String(".mp3");
     m_lastAudioPath = outPath;
 
-    const QString scriptPath = QDir(QCoreApplication::applicationDirPath()).filePath("tts_edge.py");
-    const QString pythonPath = QLatin1String("/home/suyue/miniconda3/envs/isaacsim/bin/python");
+    const QString scriptPath = resolveTtsScriptPath();
+    const QString pythonPath = resolveEmobotPython();
 
     m_ttsProc = new QProcess(this);
     m_ttsProc->setProgram(pythonPath);

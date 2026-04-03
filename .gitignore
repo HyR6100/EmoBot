@@ -22,6 +22,9 @@ qt_companion/moc_predefs.h
 models/*.pt
 *.pt
 
+# 本地路径配置（勿提交）
+scripts/env.local.sh
+
 # IDE
 *.pro.user
 *.autosave

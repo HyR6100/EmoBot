@@ -7,20 +7,57 @@
 #include <QPixmap>
 #include <QImage>
 #include <QVBoxLayout>
+#include <QSizePolicy>
+#include <QTimer>
 #include <QtGlobal>
+
+void MjpegViewerWidget::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    refreshLabelPixmap();
+}
+
+void MjpegViewerWidget::setSourceFrame(const QPixmap &pix)
+{
+    if (pix.isNull())
+        return;
+    m_lastSource = pix;
+    m_hasStream = true;
+    refreshLabelPixmap();
+    // 嵌套在 QGroupBox 里时，首帧时常尚未完成布局，多拍刷新避免 label 尺寸仍为 0
+    QTimer::singleShot(0, this, [this]() { refreshLabelPixmap(); });
+    QTimer::singleShot(50, this, [this]() { refreshLabelPixmap(); });
+    QTimer::singleShot(200, this, [this]() { refreshLabelPixmap(); });
+}
+
+void MjpegViewerWidget::refreshLabelPixmap()
+{
+    if (!m_label || m_lastSource.isNull())
+        return;
+
+    QRect lr = m_label->contentsRect();
+    int tw = lr.width();
+    int th = lr.height();
+
+    // 布局还没给 QLabel 有效区域时：用控件宽度推算，避免永远不 setPixmap
+    if (tw <= 2 || th <= 2) {
+        const int w = qMax(280, contentsRect().width() - 20);
+        const double aspect = double(m_lastSource.height()) / qMax(1, m_lastSource.width());
+        tw = w;
+        th = qMax(100, int(qRound(w * aspect)));
+    }
+
+    const QPixmap scaled = m_lastSource.scaled(tw, th, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    m_label->setPixmap(scaled);
+    m_label->setText(QString());
+    m_label->update();
+}
 
 void MjpegViewerWidget::showFrame(const QPixmap &pix)
 {
     if (!m_label || pix.isNull())
         return;
-    m_hasStream = true;
-    const QSize target = m_label->size();
-    if (target.isValid() && target.width() > 10 && target.height() > 10) {
-        m_label->setPixmap(pix.scaled(target, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    } else {
-        m_label->setPixmap(pix);
-    }
-    m_label->setText(QString());
+    setSourceFrame(pix);
 }
 
 const QByteArray MjpegViewerWidget::SOI = QByteArray::fromRawData("\xFF\xD8", 2);
@@ -29,13 +66,21 @@ const QByteArray MjpegViewerWidget::EOI = QByteArray::fromRawData("\xFF\xD9", 2)
 MjpegViewerWidget::MjpegViewerWidget(QWidget *parent)
     : QWidget(parent)
 {
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
+    setMinimumSize(300, 168);
+
     m_label = new QLabel(this);
     m_label->setAlignment(Qt::AlignCenter);
-    m_label->setText(QStringLiteral("MJPEG 流未开始"));
-    m_label->setStyleSheet("color:#6b3d86;");
+    m_label->setText(QStringLiteral("MJPEG / Blender UDP 预览"));
+    m_label->setStyleSheet(
+        "color:#6b3d86; background: rgba(255,255,255,0.35); border-radius: 8px;");
+    m_label->setScaledContents(false);
+    m_label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
+    m_label->setMinimumSize(280, 120);
 
     auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(10, 10, 10, 10);
+    layout->setContentsMargins(8, 8, 8, 8);
+    layout->setSpacing(0);
     layout->addWidget(m_label, 1);
 }
 
@@ -76,7 +121,9 @@ void MjpegViewerWidget::stop()
         m_nam = nullptr;
     }
     m_buffer.clear();
+    m_lastSource = QPixmap();
     if (m_label) {
+        m_label->clear();
         m_label->setText(QStringLiteral("MJPEG 流已停止"));
     }
 }
@@ -104,11 +151,9 @@ void MjpegViewerWidget::onReplyReadyRead()
 
 void MjpegViewerWidget::parseAndUpdateFrames()
 {
-    // Robust parsing: search JPEG SOI/EOI markers in the stream.
     while (true) {
         const int start = m_buffer.indexOf(SOI);
         if (start < 0) {
-            // Keep tail bytes
             if (m_buffer.size() > 2) {
                 m_buffer = m_buffer.right(2);
             }
@@ -117,7 +162,6 @@ void MjpegViewerWidget::parseAndUpdateFrames()
 
         const int end = m_buffer.indexOf(EOI, start + 2);
         if (end < 0) {
-            // wait for more data
             if (start > 0) {
                 m_buffer = m_buffer.mid(start);
             }
@@ -125,7 +169,6 @@ void MjpegViewerWidget::parseAndUpdateFrames()
         }
 
         const QByteArray jpeg = m_buffer.mid(start, end - start + 2);
-        // Remove everything up to end+2
         m_buffer.remove(0, end + 2);
 
         updatePixmapFromJpeg(jpeg);
@@ -139,16 +182,8 @@ void MjpegViewerWidget::updatePixmapFromJpeg(const QByteArray &jpeg)
     img.loadFromData(jpeg, "JPG");
     if (img.isNull())
         return;
-    // Scale by keeping aspect ratio.
-    const QPixmap px = QPixmap::fromImage(img);
-    if (m_label) {
-        const QSize target = m_label->size();
-        if (target.isValid()) {
-            m_label->setPixmap(px.scaled(target, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-        } else {
-            m_label->setPixmap(px);
-        }
-        m_label->setText(QString());
+    if (img.format() != QImage::Format_RGB32 && img.format() != QImage::Format_ARGB32) {
+        img = img.convertToFormat(QImage::Format_RGB32);
     }
+    setSourceFrame(QPixmap::fromImage(img));
 }
-

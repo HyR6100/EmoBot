@@ -18,6 +18,9 @@
 const QByteArray CompanionBackend::s_jpegSoi = QByteArray::fromRawData("\xFF\xD8", 2);
 const QByteArray CompanionBackend::s_jpegEoi = QByteArray::fromRawData("\xFF\xD9", 2);
 
+// Blender（blend 内脚本）向本机该端口以 UDP 发送 JPEG；与 blend 里 UDP_PORT 一致。
+static const quint16 kBlenderVideoUdpPort = 5005;
+
 static const char *kOutputRules = R"(
 【输出规则】
 1. 必须输出JSON，不得有任何其他内容
@@ -64,7 +67,7 @@ CompanionBackend::CompanionBackend(QObject *parent)
     m_videoSocket = new QUdpSocket(this);
     // Large preview JPEGs can arrive in many datagrams; raise OS receive buffer on best-effort.
     m_videoSocket->setSocketOption(QAbstractSocket::ReceiveBufferSizeSocketOption, 8 * 1024 * 1024);
-    const quint16 videoPort = 5005;
+    const quint16 videoPort = kBlenderVideoUdpPort;
     if (!m_videoSocket->bind(QHostAddress::LocalHost, videoPort)) {
         emit statusChanged(QStringLiteral("视频 UDP 端口 %1 绑定失败（是否被占用？）").arg(videoPort));
     }
@@ -106,7 +109,12 @@ void CompanionBackend::extractJpegsFromBuffer()
         QImage img;
         if (!img.loadFromData(jpeg, "JPEG"))
             continue;
-        emit frameReady(QPixmap::fromImage(img));
+        if (img.format() != QImage::Format_RGB32 && img.format() != QImage::Format_ARGB32) {
+            img = img.convertToFormat(QImage::Format_RGB32);
+        }
+        const QPixmap pm = QPixmap::fromImage(img);
+        if (!pm.isNull())
+            emit frameReady(pm);
     }
 }
 

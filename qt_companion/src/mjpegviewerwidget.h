@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QWidget>
+#include <QPixmap>
+#include <QResizeEvent>
 
 class QLabel;
 class QNetworkAccessManager;
@@ -23,9 +25,14 @@ private slots:
     void onReplyReadyRead();
     void onReplyFinished();
 
+protected:
+    void resizeEvent(QResizeEvent *event) override;
+
 private:
     void parseAndUpdateFrames();
     void updatePixmapFromJpeg(const QByteArray &jpeg);
+    void setSourceFrame(const QPixmap &pix);
+    void refreshLabelPixmap();
 
 private:
     QLabel *m_label = nullptr;
@@ -33,6 +40,7 @@ private:
     QNetworkReply *m_reply = nullptr;
     QByteArray m_buffer;
     bool m_hasStream = false;
+    QPixmap m_lastSource;
 
     // JPEG markers
     static const QByteArray SOI;

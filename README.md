@@ -52,7 +52,7 @@ flowchart LR
 | Qt → Ollama | HTTP `POST /api/chat` | 多轮 messages + system persona，模型输出结构化 JSON |
 | Qt → Isaac Sim | TCP | `{"emotion","gesture"}`，驱动仿真侧行为与人设表现 |
 | Isaac Sim → Blender | UDP | 骨骼姿态、情绪等，驱动 VRM |
-| Blender / 中转 → Qt | UDP JPEG 或 HTTP MJPEG | 视口或合成画面回显到右侧面板 |
+| Blender / 中转 → Qt | **UDP JPEG :5005**（blend 内脚本）或 HTTP MJPEG | 视口或合成画面回显到右侧面板 |
 | Qt → 系统进程 | `QProcess` | `edge-tts` 脚本生成音频、`ffplay` 回放 |
 
 **仓库目录（与架构对应）**
@@ -66,27 +66,94 @@ flowchart LR
 
 ---
 
-## 本地运行
+## 部署指南（给他人照做）
 
-### Qt 客户端
+完整体验需要 **Isaac Sim（含 Isaac Lab）+ Blender 5.1 + Qt 客户端 + Ollama**。下列约定与你的当前链路一致：**conda 环境名 `isaacsim`**；Isaac 脚本见 `server/isaac_controller.py`。
+
+### 1. 前置条件
+
+| 项目 | 说明 |
+|------|------|
+| 系统 | Linux（与 NVIDIA Isaac Sim 支持版本一致） |
+| GPU | NVIDIA + 与 Isaac Sim 版本匹配的驱动 |
+| Isaac Sim + Isaac Lab | 按 [Isaac Lab 官方文档](https://isaac-sim.github.io/IsaacLab) 安装；脚本默认 `ISAACLAB_ROOT=~/IsaacLab` |
+| Conda | 已配置**可运行 Isaac Lab** 的环境（示例名 **`isaacsim`**） |
+| Blender | **5.1**；工程内需脚本监听 UDP **9999**（Isaac 广播），并向 **5005** 发 JPEG 给 Qt |
+| Qt 5 | `qmake` + Widgets + Network（如 Ubuntu: `sudo apt install qtbase5-dev`） |
+| Ollama | 本机服务；模型如 `qwen2.5:14b`（与 `companionbackend.h` 中默认一致，可改） |
+| 可选 | `ffplay`（TTS 播放）；`edge-tts` 用本仓库脚本装入 conda |
+
+### 2. 克隆与一键准备
 
 ```bash
-cd qt_companion
-qmake qt_companion.pro
-make -j4
-./EmobotQtCompanion
+git clone https://github.com/HyR6100/EmoBot.git
+cd EmoBot
+
+cp scripts/env.example.sh scripts/env.local.sh
+nano scripts/env.local.sh    # 填写 EMOBOT_ROOT、ISAACLAB_ROOT、EMOBOT_PYTHON 等
+
+./scripts/setup_dev.sh       # 安装 edge-tts + 自检 +（可选）编译 Qt
+# 或分步：
+./scripts/install_pip_extras.sh
+./scripts/check_env.sh
+./build_qt.sh
 ```
 
-可选：`./EmobotQtCompanion --selftest` 在无界面下验证 Ollama 与嵌入资源。
+**大文件**：`models/h1_base_walk.pt`、`xiayizhou.glb` 默认不入库；请自备后放入仓库路径，或设置 `EMOBOT_H1_CHECKPOINT`、`EMOBOT_VRM_GLB`。
 
-### 视频
+### 3. 启动顺序（建议四步）
 
-- **HTTP**：运行 `mjpeg_blender_server.py`（或兼容 `multipart/x-mixed-replace` 的 MJPEG 服务），默认 `http://127.0.0.1:8090/stream`。
-- **UDP**：向 `127.0.0.1:5005` 发送 JPEG 字节（可多 UDP 包；程序按 JPEG 起止标记拼帧）。自测：`qt_companion/udp_jpeg_test_sender.py 某图.jpg`。
+每个新终端可先执行：`source /你的路径/EmoBot/scripts/env.local.sh`
 
-### 依赖
+1. **Isaac**  
+   `./scripts/run_isaac_controller.sh`  
+   或：`conda activate isaacsim` → `python server/isaac_controller.py`  
+   （监听 TCP **12345**；UDP **9999** → Blender）
 
-Qt 5（Widgets + Network）、Ollama、可选 `edge-tts` / `ffplay`；Isaac 侧 TCP `12345` 与仓库内脚本约定一致（可按环境修改主机与端口）。
+2. **Blender 5.1**  
+   打开你的 blend；运行**接收 9999** 的脚本 + **向 127.0.0.1:5005 发 JPEG** 的脚本（参考 `qt_companion/blender_udp_5005.py`）。
+
+3. **Ollama**（若未后台运行）  
+   `ollama serve`，并 `ollama pull qwen2.5:14b`（或你改过的模型名）。
+
+4. **Qt**  
+   ```bash
+   cd qt_companion
+   export EMOBOT_ROOT="/你的路径/EmoBot"
+   export EMOBOT_PYTHON="/你的路径/miniconda3/envs/isaacsim/bin/python"
+   ./EmobotQtCompanion
+   ```  
+   仅试聊可不启动 Isaac/Blender，但会提示 **TCP 12345 连接失败**（预期现象）。  
+   无界面自测：`./EmobotQtCompanion --selftest`
+
+### 4. 环境变量（摘要）
+
+| 变量 | 含义 |
+|------|------|
+| `EMOBOT_ROOT` | 本仓库根目录 |
+| `ISAACLAB_ROOT` | Isaac Lab 源码根 |
+| `EMOBOT_PYTHON` | 含 `edge-tts` 的 Python，供 Qt 调 TTS |
+| `EMOBOT_H1_CHECKPOINT` | H1 策略 `.pt` |
+| `EMOBOT_VRM_GLB` | Isaac 引用的角色 `.glb` |
+| `EMOBOT_CONDA_ENV` | `conda run -n` 名，默认 `isaacsim` |
+
+详见 `scripts/env.example.sh`。
+
+### 5. 端口一览
+
+| 端口 | 说明 |
+|------|------|
+| 12345 | Qt → Isaac，TCP |
+| 9999 | Isaac → Blender，UDP 位姿 |
+| 5005 | Blender → Qt，UDP JPEG |
+| 11434 | Qt → Ollama |
+| 8090 | 可选 HTTP MJPEG（`qt_companion/mjpeg_blender_server.py`） |
+
+UDP 画面自测：`python3 qt_companion/udp_jpeg_test_sender.py 某图.jpg`
+
+### 6. 编译 Qt（提醒）
+
+须在 **`qt_companion` 目录**执行 `qmake`，否则报错 `Cannot find file: qt_companion.pro`。根目录可用：`./build_qt.sh`。
 
 ---
 

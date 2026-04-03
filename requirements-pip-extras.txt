@@ -1,0 +1,4 @@
+# 在已装好 Isaac Sim / Isaac Lab 的 conda 环境（如 isaacsim）中额外安装：
+#   conda activate isaacsim
+#   pip install -r requirements-pip-extras.txt
+edge-tts>=6.0

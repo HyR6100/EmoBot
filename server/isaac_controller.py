@@ -5,8 +5,16 @@ import sys
 import os
 import argparse
 
-sys.path.append(os.path.expanduser("~/IsaacLab"))
-sys.path.append(os.path.expanduser("~/IsaacLab/scripts/reinforcement_learning/rsl_rl"))
+# 路径可通过环境变量覆盖，便于他人克隆仓库后部署（见 README「部署」）
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_REPO_ROOT = os.path.abspath(os.environ.get("EMOBOT_ROOT", os.path.join(_SCRIPT_DIR, "..")))
+_ISAACLAB_ROOT = os.path.expanduser(os.environ.get("ISAACLAB_ROOT", "~/IsaacLab"))
+for _p in (
+    _ISAACLAB_ROOT,
+    os.path.join(_ISAACLAB_ROOT, "scripts", "reinforcement_learning", "rsl_rl"),
+):
+    if _p not in sys.path:
+        sys.path.append(_p)
 
 from isaaclab.app import AppLauncher
 
@@ -31,7 +39,22 @@ BLENDER_ADDR = ('127.0.0.1', 9999)
 udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 current_emotion = "happy"
-CHECKPOINT = os.path.expanduser("~/EmoBot/models/h1_base_walk.pt")
+CHECKPOINT = os.environ.get(
+    "EMOBOT_H1_CHECKPOINT",
+    os.path.join(_REPO_ROOT, "models", "h1_base_walk.pt"),
+)
+# Isaac 场景中引用的角色模型（glb）；缺文件时请自行放入仓库或改环境变量
+VRM_GLB_REFERENCE = os.environ.get(
+    "EMOBOT_VRM_GLB",
+    os.path.join(_REPO_ROOT, "xiayizhou.glb"),
+)
+
+print(f"[Isaac Controller] EMOBOT_ROOT={_REPO_ROOT}")
+print(f"[Isaac Controller] ISAACLAB_ROOT={_ISAACLAB_ROOT}")
+print(f"[Isaac Controller] CHECKPOINT={CHECKPOINT}")
+print(f"[Isaac Controller] VRM_GLB={VRM_GLB_REFERENCE}")
+if not os.path.isfile(CHECKPOINT):
+    print(f"[Isaac Controller] 警告: 未找到权重文件，请放入 models/ 或设置 EMOBOT_H1_CHECKPOINT")
 
 def socket_listener():
     global current_emotion
@@ -102,8 +125,8 @@ stage = omni.usd.get_context().get_stage()
 vrm_prim_path = "/World/VRM_Character"
 # 添加VRM角色到场景
 vrm_ref = stage.DefinePrim(vrm_prim_path, "Xform")
-vrm_ref.GetReferences().AddReference("/home/EmoBot/xiayizhou.glb")
-print(f"[Isaac Controller] VRM角色已加载: {vrm_prim_path}")
+vrm_ref.GetReferences().AddReference(VRM_GLB_REFERENCE.replace("\\", "/"))
+print(f"[Isaac Controller] VRM引用: {VRM_GLB_REFERENCE} @ {vrm_prim_path}")
 
 obs, _ = env.reset()
 
