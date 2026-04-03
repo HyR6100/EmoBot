@@ -1,15 +1,14 @@
 # EmoBot — 陪伴系统（Dream Companion）
 
 全栈感知的 **数字人陪伴 + 具身联动** 实验项目：桌面端用 **C++/Qt** 做产品与编排，**大语言模型**负责对话与人设，**Isaac Sim / Blender** 负责机器人驱动与 VRM 可视化，并打通 **TTS、表情指令与实时画面回传**。
----启动顺序：
+致谢+需准备：blender， Unitree-H1， Qt，ollama，tts
 
-    启动 Isaac：python server/isaac_controller.py (监听 TCP 12345)
+## 启动顺序：
 
-    启动 Blender：打开模型（models/h12h12vrm.blend)，运行 UDP 接收与 JPEG 发送脚本。
-
-    启动 Ollama：ollama serve。
-
-    启动 Qt 客户端：进入 qt_companion 运行编译好的二进制文件。
+- 启动 Isaac：python server/isaac_controller.py (监听 TCP 12345)
+- 启动 Blender：打开模型（models/h12h12vrm.blend)，运行 UDP 接收与 JPEG 发送脚本。
+- 启动 Ollama：ollama serve。(根据电脑配置选择LLM模型，本项目用的qwen2.5:14b)
+- 启动 Qt 客户端：进入 qt_companion 运行编译好的二进制文件。
 
 ## 项目亮点
 
@@ -164,4 +163,4 @@ UDP 画面自测：`python3 qt_companion/udp_jpeg_test_sender.py 某图.jpg`
 
 ## 许可说明
 
-使用方式以学习、演示与求职作品展示为主；二次分发或商用请自行补齐各依赖（Qt、Ollama、模型权重、Isaac、VRM 资产等）的许可条款。
+使用方式以学习作品展示为主；二次分发或商用请自行补齐各依赖（Qt、Ollama、模型权重、Isaac、VRM 资产等）的许可条款。
