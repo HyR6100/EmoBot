@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RCC version="1.0">
+  <qresource prefix="/">
+    <file>qml/main.qml</file>
+    <file>resources/avatars/user.png</file>
+    <file>resources/avatars/xia.png</file>
+  </qresource>
+</RCC>
+

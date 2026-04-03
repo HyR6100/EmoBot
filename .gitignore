@@ -1,0 +1,32 @@
+__pycache__/
+*.py[cod]
+*.log
+*.glb
+*.mp3
+*.wav
+
+# Qt build artifacts
+qt_companion/Makefile
+qt_companion/.qmake.stash
+qt_companion/*.o
+qt_companion/moc_*.cpp
+qt_companion/qrc_*.cpp
+qt_companion/qt_companion
+qt_companion/EmobotQtCompanion
+qt_companion/moc_predefs.h
+
+# Heavy assets (use releases or external storage)
+*.blend
+*.blend1
+*.usdc
+models/*.pt
+*.pt
+
+# IDE
+*.pro.user
+*.autosave
+.vscode/
+.idea/
+
+# Optional large HDR/EXR
+*.exr
