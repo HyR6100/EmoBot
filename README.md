@@ -1,4 +1,4 @@
-# EmoBot — 梦幻陪伴系统（Dream Companion）
+# EmoBot — 陪伴系统（Dream Companion）
 
 全栈感知的 **数字人陪伴 + 具身联动** 实验项目：桌面端用 **C++/Qt** 做产品与编排，**大语言模型**负责对话与人设，**Isaac Sim / Blender** 负责机器人驱动与 VRM 可视化，并打通 **TTS、表情指令与实时画面回传**。
 
@@ -55,7 +55,7 @@ flowchart LR
 | Blender / 中转 → Qt | **UDP JPEG :5005**（blend 内脚本）或 HTTP MJPEG | 视口或合成画面回显到右侧面板 |
 | Qt → 系统进程 | `QProcess` | `edge-tts` 脚本生成音频、`ffplay` 回放 |
 
-**仓库目录（与架构对应）**
+**仓库目录**
 
 | 路径 | 角色 |
 |------|------|
@@ -66,9 +66,9 @@ flowchart LR
 
 ---
 
-## 部署指南（给他人照做）
+## 部署指南
 
-完整体验需要 **Isaac Sim（含 Isaac Lab）+ Blender 5.1 + Qt 客户端 + Ollama**。下列约定与你的当前链路一致：**conda 环境名 `isaacsim`**；Isaac 脚本见 `server/isaac_controller.py`。
+完整体验需要 **Isaac Sim（含 Isaac Lab）+ Blender 5.1 + Qt 客户端 + Ollama**。例如：**conda 环境名 `isaacsim`**；Isaac 脚本见 `server/isaac_controller.py`。
 
 ### 1. 前置条件
 
@@ -99,9 +99,7 @@ nano scripts/env.local.sh    # 填写 EMOBOT_ROOT、ISAACLAB_ROOT、EMOBOT_PYTHO
 ./build_qt.sh
 ```
 
-**大文件**：`models/h1_base_walk.pt`、`xiayizhou.glb` 默认不入库；请自备后放入仓库路径，或设置 `EMOBOT_H1_CHECKPOINT`、`EMOBOT_VRM_GLB`。
-
-### 3. 启动顺序（建议四步）
+### 3. 启动顺序
 
 每个新终端可先执行：`source /你的路径/EmoBot/scripts/env.local.sh`
 
