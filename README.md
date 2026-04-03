@@ -76,7 +76,7 @@ flowchart LR
 |------|------|
 | 系统 | Linux（与 NVIDIA Isaac Sim 支持版本一致） |
 | GPU | NVIDIA + 与 Isaac Sim 版本匹配的驱动 |
-| Isaac Sim + Isaac Lab | 按 [Isaac Lab 官方文档](https://isaac-sim.github.io/IsaacLab) 安装；脚本默认 `ISAACLAB_ROOT=~/IsaacLab` |
+| Isaac Sim + Isaac Lab | 按 [Isaac Lab 官方文档](https://isaac-sim.github.io/IsaacLab) 安装
 | Conda | 已配置**可运行 Isaac Lab** 的环境（示例名 **`isaacsim`**） |
 | Blender | **5.1**；工程内需脚本监听 UDP **9999**（Isaac 广播），并向 **5005** 发 JPEG 给 Qt |
 | Qt 5 | `qmake` + Widgets + Network（如 Ubuntu: `sudo apt install qtbase5-dev`） |
